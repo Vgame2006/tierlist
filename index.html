@@ -150,7 +150,7 @@ function saveE(){const n=E.name.trim();if(!n)return alert('Введите наз
 if(E.id){const i=cur.items.find(x=>x.id==E.id);i.name=n;i.img=E.img;i.tried=1}else cur.items.push({id:uid(),name:n,img:E.img,tier:''});
 save();['edt','srch'].forEach(x=>$(x).classList.remove('on'));closeV();editor()}
 function openV(id){const i=cur.items.find(x=>x.id==id);if(!i)return;const t=cur.tiers.find(x=>x.id==i.tier);
-$('view').innerHTML=`<div class="vc" style="background-image:url('${i.img}')"><span>${esc(i.name)}</span></div><div style="color:#fff">${t?'Ряд: '+esc(t.name):'Не в тир-листе'}</div><div class="er" style="width:min(92vw,520px)"><button style="flex:1" onclick="closeV()">Закрыть</button><button style="flex:1" onclick="closeV();edit('${id}')">✏️ Изменить</button><button style="flex:1;background:#d33;color:#fff" onclick="delItem('${id}')">🗑</button></div>`;$('view').classList.add('on')}
+$('view').innerHTML=`<div class="vc" style="background-image:url('${i.img}')"><span>${esc(i.name)}</span></div><div style="color:#fff">${t?'Ряд: '+esc(t.name):'Не в тир-листе'}</div><div class="er" style="width:min(92vw,520px)"><button style="flex:1" onclick="closeV()">Закрыть</button><button style="flex:1" onclick="closeV();edit('${id}')">✏️ Изменить</button><button style="flex:1;background:#d33;color:#fff" onclick="delItem('${id}')">🗑</button></div>`;$('view').style.pointerEvents='none';setTimeout(()=>$('view').style.pointerEvents='',450);$('view').classList.add('on')}
 function closeV(){$('view').classList.remove('on')}
 function delItem(id){const i=cur.items.find(x=>x.id==id);if(!i||!confirm('Удалить «'+i.name+'»?'))return;cur.items=cur.items.filter(x=>x!=i);save();closeV();editor()}
 $('view').onclick=e=>{if(e.target.id=='view')closeV()};
