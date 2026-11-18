@@ -16,12 +16,19 @@ jobs:
         with:
           distribution: temurin
           java-version: 17
-      - run: mkdir -p www && cp index.html www/index.html
+      - run: mkdir -p www && cp index.html www/index.html && sed -i "s/const BUILD=0;/const BUILD=${{ github.run_number }};/" www/index.html
       - run: pip install pillow && python3 make_icon.py
       - run: npm install
       - run: npx cap add android
+      - run: sed -i "s/versionCode 1/versionCode ${{ github.run_number }}/" android/app/build.gradle
       - run: npx @capacitor/assets generate --android
       - run: npx cap sync android
+      - name: Signing key
+        env:
+          KS: ${{ secrets.KS_B64 }}
+        run: |
+          mkdir -p ~/.android
+          if [ -n "$KS" ]; then echo "$KS" | base64 -d > ~/.android/debug.keystore; fi
       - run: cd android && chmod +x gradlew && ./gradlew assembleDebug
       - uses: softprops/action-gh-release@v2
         with:
