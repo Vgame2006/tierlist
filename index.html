@@ -36,9 +36,9 @@ input[type=text],input:not([type]){width:100%;padding:12px;border-radius:12px;bo
 .er input:not([type=color]){flex:1;min-width:0}.er button{padding:8px 10px}
 .li{display:flex;gap:10px;align-items:center;margin:8px 0}.li .cont{margin:0;flex:1}
 label{display:block;margin:14px 0 6px;color:var(--mu)}
-</style></head><body>
+.ig{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.ig div{aspect-ratio:1;background:#444 center/cover;border-radius:10px}</style></head><body>
 <div id="home" class="scr on"></div><div id="lists" class="scr"></div><div id="set" class="scr"></div><div id="ed" class="scr"></div>
-<div id="srch" class="sheet"></div><div id="cfg" class="sheet"></div><div id="exp" class="sheet"></div><div id="view" class="view"></div>
+<div id="srch" class="sheet"></div><div id="cfg" class="sheet"></div><div id="exp" class="sheet"></div><div id="edt" class="sheet"></div><div id="isr" class="sheet"></div><input type="file" id="pf" accept="image/*" hidden><div id="view" class="view"></div>
 <input type="file" id="imp" accept=".json,.tier" hidden>
 <script>
 const $=id=>document.getElementById(id),uid=()=>Math.random().toString(36).slice(2,9);
@@ -70,7 +70,7 @@ function settings(){const s=S.set;$('set').innerHTML=`<div class="bar"><button c
 <label>Данные</label><button onclick="if(confirm('Удалить ВСЕ тир-листы?')){S.lists=[];S.last=null;save();alert('Готово')}">Удалить все тир-листы</button>`}
 function editor(){const l=cur;$('ed').innerHTML=`<div class="bar"><button class="ib" onclick="show('home')">🏠</button><b>${esc(l.name)}</b><button class="ib" onclick="cfg()">✏️</button><button class="ib" onclick="expo()">📤</button></div>`+
 l.tiers.map(t=>`<div class="row"><div class="lab" style="background:${t.color}">${esc(t.name)}</div><div class="cell" data-t="${t.id}">${l.items.filter(i=>i.tier==t.id).map(tile).join('')}</div></div>`).join('')+
-`<div class="tray" data-t="">${l.items.filter(i=>!i.tier).map(tile).join('')}</div><button class="big pr" style="margin-top:14px;text-align:center" onclick="srch()">🔍 Добавить игру</button>`}
+`<div class="tray" data-t="">${l.items.filter(i=>!i.tier).map(tile).join('')}</div><button class="big pr" style="margin-top:14px;text-align:center" onclick="srch()">🔍 Добавить игру</button>`;setTimeout(ensureImgs,50)}
 const tile=i=>`<div class="tile" data-i="${i.id}" style="background-image:url('${i.img||''}')"><span>${esc(i.name)}</span></div>`;
 // drag
 let g=null;
@@ -96,11 +96,11 @@ function mv(k,d){const a=cur.tiers;if(!a[k+d])return;[a[k],a[k+d]]=[a[k+d],a[k]]
 function rm(k){const t=cur.tiers[k];cur.items.forEach(i=>{if(i.tier==t.id)i.tier=''});cur.tiers.splice(k,1);save();cfg()}
 function addT(){cur.tiers.push({id:uid(),name:'Новая',color:'#cccccc'});save();cfg()}
 // search
-let tm;function srch(){$('srch').classList.add('on');$('srch').innerHTML=`<div class="bar"><input id="q" placeholder="Название игры" oninput="clearTimeout(tm);tm=setTimeout(find,450)"><button onclick="$('srch').classList.remove('on')">✕</button></div><div id="rs"></div>`;$('q').focus()}
+let tm;function srch(){$('srch').classList.add('on');$('srch').innerHTML=`<div class="bar"><input id="q" placeholder="Название игры" oninput="clearTimeout(tm);tm=setTimeout(find,450)"><button onclick="$('srch').classList.remove('on')">✕</button></div><button class="big" style="text-align:center" onclick="edit(null,$('q').value.trim())">➕ Своя игра (своё фото)</button><div id="rs"></div>`;$('q').focus()}
 const enc=encodeURIComponent;
 async function rawg(q){const d=await(await fetch(`https://api.rawg.io/api/games?key=${S.set.key}&search=${enc(q)}&page_size=12`)).json();return d.results.map(g=>({name:g.name,img:g.background_image||''}))}
 async function steam(q){const d=await(await fetch(`https://store.steampowered.com/api/storesearch/?term=${enc(q)}&l=english&cc=us`)).json();return d.items.slice(0,12).map(i=>({name:i.name,img:`https://cdn.cloudflare.steamstatic.com/steam/apps/${i.id}/header.jpg`}))}
-async function wiki(q){const d=await(await fetch(`https://en.wikipedia.org/w/api.php?action=query&generator=search&gsrsearch=${enc(q+' video game')}&gsrlimit=12&prop=pageimages&piprop=thumbnail&pithumbsize=400&format=json&origin=*`)).json();
+async function wiki(q){const d=await(await fetch(`https://en.wikipedia.org/w/api.php?action=query&generator=search&gsrsearch=${enc(q+' video game')}&gsrlimit=12&prop=pageimages&piprop=thumbnail&pithumbsize=400&pilicense=any&format=json&origin=*`)).json();
 return Object.values(d.query?.pages||{}).sort((x,y)=>x.index-y.index).map(p=>({name:p.title.replace(/ \(.*video game.*\)$/i,''),img:p.thumbnail?.source||''}))}
 async function find(){const q=$('q').value.trim(),r=$('rs');if(!q)return;r.textContent='Поиск…';let L=[];
 if(S.set.key)try{L=await rawg(q)}catch(e){}
@@ -108,7 +108,8 @@ if(!L.length)try{L=await steam(q)}catch(e){}
 if(!L.length)try{L=await wiki(q)}catch(e){}
 window.R=L;r.innerHTML=L.length?L.map((g,k)=>`<div class="res" style="background-image:url('${g.img}')" onclick="pick(${k})"><span>${esc(g.name)}</span></div>`).join(''):'Ничего не найдено или нет интернета'}
 function small(u){return new Promise(res=>{if(!u)return res('');const im=new Image;im.crossOrigin='anonymous';im.onload=()=>{try{const c=document.createElement('canvas');c.width=c.height=300;const x=c.getContext('2d'),s=Math.min(im.width,im.height);x.drawImage(im,(im.width-s)/2,(im.height-s)/2,s,s,0,0,300,300);res(c.toDataURL('image/jpeg',.75))}catch(e){res(u)}};im.onerror=()=>res(u);im.src=u})}
-async function pick(k){const g=R[k];$('srch').classList.remove('on');cur.items.push({id:uid(),name:g.name,img:await small(g.img),tier:''});save();editor()}
+async function pick(k){const g=R[k];$('srch').classList.remove('on');let im=g.img;if(!im)try{im=(await imgSearch(g.name))[0]?.img||''}catch(e){}
+cur.items.push({id:uid(),name:g.name,img:await small(im),tier:''});save();editor()}
 // export
 function expo(){$('exp').classList.add('on');$('exp').innerHTML=`<div class="bar"><b>Экспорт</b><button onclick="$('exp').classList.remove('on')">✕</button></div><button class="big pr" onclick="png()">🖼 Как картинка (PNG)</button><button class="big" onclick="fileEx()">📄 Как файл для импорта</button>`}
 async function out(blob,name){const C=window.Capacitor;
@@ -124,15 +125,37 @@ for(let k=0;k<rows[r].it.length;k++){const i=rows[r].it[k],px=P+(k%pr)*T,py=y+Ma
 if(!noimg&&i.img){await new Promise(res=>{const im=new Image;im.crossOrigin='anonymous';im.onload=()=>{x.drawImage(im,px,py,T,T);res()};im.onerror=res;im.src=i.img})}
 x.fillStyle='rgba(0,0,0,.4)';x.fillRect(px,py,T,T);x.fillStyle='#fff';x.font='bold 13px sans-serif';x.fillText(i.name.slice(0,22),px+T/2,py+T/2,T-8)}y+=hs[r]+3}
 c.toBlob(b=>{if(b)out(b,cur.name+'.png');else if(!noimg)png(true)},'image/png')}
+async function imgSearch(q){const J=async u=>(await fetch(u)).json(),W='https://en.wikipedia.org/w/api.php?format=json&origin=*&action=query&';
+const pg=d=>Object.values(d.query?.pages||{}).sort((a,b)=>a.index-b.index),fl=d=>pg(d).map(p=>p.imageinfo?.[0]?.thumburl);
+const jobs=[steam(q).then(a=>a.map(x=>x.img)),
+J(W+`generator=search&gsrsearch=${enc(q+' video game')}&gsrlimit=8&prop=pageimages&piprop=thumbnail&pithumbsize=400&pilicense=any`).then(d=>pg(d).map(p=>p.thumbnail?.source)),
+J(W+`generator=search&gsrsearch=${enc(q+' cover')}&gsrnamespace=6&gsrlimit=10&prop=imageinfo&iiprop=url&iiurlwidth=400`).then(fl),
+J(`https://commons.wikimedia.org/w/api.php?format=json&origin=*&action=query&generator=search&gsrsearch=${enc(q)}&gsrnamespace=6&gsrlimit=10&prop=imageinfo&iiprop=url&iiurlwidth=400`).then(fl)];
+const out=[];for(const r of await Promise.allSettled(jobs))if(r.status=='fulfilled')for(const u of r.value)if(u&&!out.some(o=>o.img==u))out.push({img:u});return out}
+let busy=0;async function ensureImgs(){if(busy||!navigator.onLine)return;busy=1;const L=cur;let ch=false;
+for(const i of L.items){if(i.img||i.tried)continue;try{const r=await imgSearch(i.name);i.tried=1;if(r[0]){i.img=await small(r[0].img);ch=true}}catch(e){}}
+busy=0;if(ch){save();if(scr=='ed'&&cur==L&&!g)editor()}}
+let E=null;function edit(id,nm){const i=id?cur.items.find(x=>x.id==id):null;E={id:id||null,name:i?i.name:(nm||''),img:i?i.img:''};drawE()}
+function drawE(){$('edt').classList.add('on');$('edt').innerHTML=`<div class="bar"><b>${E.id?'Изменить игру':'Своя игра'}</b><button class="ib" onclick="$('edt').classList.remove('on')">✕</button></div>
+<div class="vc" style="width:min(70vw,300px);margin:6px auto 14px;background-image:url('${E.img}')"><span id="ept">${esc(E.name)}</span></div>
+<label>Название</label><input value="${esc(E.name)}" oninput="E.name=this.value;$('ept').textContent=this.value">
+<label>Картинка</label><button class="big" onclick="$('pf').click()">📁 Выбрать из файлов</button><button class="big" onclick="imgSheet()">🔍 Найти в интернете</button><button class="big pr" style="text-align:center;margin-top:18px" onclick="saveE()">Сохранить</button>`}
+$('pf').onchange=e=>{const f=e.target.files[0];e.target.value='';if(!f)return;const r=new FileReader;r.onload=async()=>{E.img=await small(r.result);drawE()};r.readAsDataURL(f)};
+let it;function imgSheet(){$('isr').classList.add('on');$('isr').innerHTML=`<div class="bar"><input id="iq" value="${esc(E.name)}" oninput="clearTimeout(it);it=setTimeout(imgFind,450)"><button onclick="$('isr').classList.remove('on')">✕</button></div><div id="ir" class="ig"></div>`;imgFind()}
+async function imgFind(){const q=$('iq').value.trim(),r=$('ir');if(!q)return;r.textContent='Поиск…';let L=[];try{L=await imgSearch(q)}catch(e){}window.IR=L;r.innerHTML=L.length?L.map((x,k)=>`<div style="background-image:url('${x.img}')" onclick="pickImg(${k})"></div>`).join(''):'Ничего не найдено'}
+async function pickImg(k){E.img=await small(IR[k].img);$('isr').classList.remove('on');drawE()}
+function saveE(){const n=E.name.trim();if(!n)return alert('Введите название');
+if(E.id){const i=cur.items.find(x=>x.id==E.id);i.name=n;i.img=E.img;i.tried=1}else cur.items.push({id:uid(),name:n,img:E.img,tier:''});
+save();['edt','srch'].forEach(x=>$(x).classList.remove('on'));closeV();editor()}
 function openV(id){const i=cur.items.find(x=>x.id==id);if(!i)return;const t=cur.tiers.find(x=>x.id==i.tier);
-$('view').innerHTML=`<div class="vc" style="background-image:url('${i.img}')"><span>${esc(i.name)}</span></div><div style="color:#fff">${t?'Ряд: '+esc(t.name):'Не в тир-листе'}</div><div class="er" style="width:min(92vw,520px)"><button style="flex:1" onclick="closeV()">Закрыть</button><button style="flex:1;background:#d33;color:#fff" onclick="delItem('${id}')">🗑 Удалить</button></div>`;$('view').classList.add('on')}
+$('view').innerHTML=`<div class="vc" style="background-image:url('${i.img}')"><span>${esc(i.name)}</span></div><div style="color:#fff">${t?'Ряд: '+esc(t.name):'Не в тир-листе'}</div><div class="er" style="width:min(92vw,520px)"><button style="flex:1" onclick="closeV()">Закрыть</button><button style="flex:1" onclick="closeV();edit('${id}')">✏️ Изменить</button><button style="flex:1;background:#d33;color:#fff" onclick="delItem('${id}')">🗑</button></div>`;$('view').classList.add('on')}
 function closeV(){$('view').classList.remove('on')}
 function delItem(id){const i=cur.items.find(x=>x.id==id);if(!i||!confirm('Удалить «'+i.name+'»?'))return;cur.items=cur.items.filter(x=>x!=i);save();closeV();editor()}
 $('view').onclick=e=>{if(e.target.id=='view')closeV()};
 addEventListener('contextmenu',e=>e.preventDefault());
 function back(){if($('view').classList.contains('on'))return closeV();
 if($('cfg').classList.contains('on')){$('cfg').classList.remove('on');return editor()}
-for(const id of['srch','exp'])if($(id).classList.contains('on')){$(id).classList.remove('on');return}
+for(const id of['isr','edt','srch','exp'])if($(id).classList.contains('on')){$(id).classList.remove('on');return}
 if(scr=='ed')return show(prev=='lists'?'lists':'home');
 if(scr!='home')return show('home');
 try{window.Capacitor.Plugins.App.exitApp()}catch(e){}}
