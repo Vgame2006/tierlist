@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="ru"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#14161c"><title>Тир-лист игр</title>
+<style>
+:root{--bg:#14161c;--card:#232733;--tx:#f2f3f7;--mu:#8b90a0;--ac:#6c8cff;--t:80px}
+body.light{--bg:#f0f1f5;--card:#fff;--tx:#14161c;--mu:#667}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{margin:0;background:var(--bg);color:var(--tx);font:16px system-ui,sans-serif;padding-top:env(safe-area-inset-top)}
+.scr{display:none;padding:14px;max-width:700px;margin:auto;min-height:100vh}.scr.on{display:block}
+h1{margin:8px 0 16px}button{font:inherit;color:inherit;border:0;border-radius:12px;background:var(--card);padding:12px 16px}
+.pr{background:var(--ac);color:#fff}.big{display:block;width:100%;margin:8px 0;padding:16px;text-align:left;font-weight:600}
+.bar{display:flex;gap:8px;align-items:center;margin-bottom:10px}.bar b{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ib{width:44px;height:44px;padding:0;font-size:20px}
+.cont{display:flex;gap:12px;align-items:center;width:100%;padding:10px;text-align:left;margin-bottom:12px}
+.mini{width:110px;flex:none;border-radius:6px;overflow:hidden;background:#000}
+.mr{display:flex;height:16px}.ml{width:16px}.mi{width:16px;height:16px;background-size:cover}
+.row{display:flex;margin-bottom:3px;min-height:var(--t)}
+.lab{width:70px;flex:none;display:flex;align-items:center;justify-content:center;font-weight:800;text-align:center;color:#000;padding:2px;word-break:break-word;font-size:15px}
+.cell{flex:1;display:flex;flex-wrap:wrap;background:var(--card);align-content:flex-start;min-height:var(--t)}
+.tray{margin-top:18px;border:2px dashed var(--mu);border-radius:12px;display:flex;flex-wrap:wrap;min-height:calc(var(--t) + 8px);padding:4px;gap:0}
+.tile{width:var(--t);height:var(--t);background-size:cover;background-position:center;position:relative;touch-action:none;user-select:none;-webkit-user-select:none;background-color:#444;overflow:hidden}
+.tile span{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;text-align:center;font-size:11px;font-weight:700;color:#fff;background:rgba(0,0,0,.35);text-shadow:0 1px 3px #000;padding:3px;line-height:1.1}
+.tile i{position:absolute;top:0;right:0;background:#e33;color:#fff;font-style:normal;width:22px;height:22px;text-align:center;z-index:2}
+.ghost{position:fixed;z-index:99;pointer-events:none;opacity:.85;transform:scale(1.1)}
+.sheet{position:fixed;inset:0;background:var(--bg);z-index:50;display:none;padding:14px;overflow:auto}.sheet.on{display:block}
+input[type=text],input:not([type]){width:100%;padding:12px;border-radius:12px;border:1px solid var(--mu);background:var(--card);color:var(--tx);font:inherit}
+.res{height:90px;margin:8px 0;border-radius:12px;background-size:cover;background-position:center;display:flex;align-items:flex-end;font-weight:700;color:#fff;cursor:pointer}
+.res span{width:100%;padding:8px 12px;background:linear-gradient(transparent,rgba(0,0,0,.85));border-radius:0 0 12px 12px}
+.er{display:flex;gap:6px;align-items:center;margin:6px 0}.er input[type=color]{width:44px;height:40px;padding:0;border:0;flex:none}
+.er input:not([type=color]){flex:1;min-width:0}.er button{padding:8px 10px}
+.li{display:flex;gap:10px;align-items:center;margin:8px 0}.li .cont{margin:0;flex:1}
+label{display:block;margin:14px 0 6px;color:var(--mu)}
+</style></head><body>
+<div id="home" class="scr on"></div><div id="lists" class="scr"></div><div id="set" class="scr"></div><div id="ed" class="scr"></div>
+<div id="srch" class="sheet"></div><div id="cfg" class="sheet"></div><div id="exp" class="sheet"></div>
+<input type="file" id="imp" accept=".json,.tier" hidden>
+<script>
+const $=id=>document.getElementById(id),uid=()=>Math.random().toString(36).slice(2,9);
+const COL=[['S','#ff7f7f'],['A','#ffbf7f'],['B','#ffdf7f'],['C','#ffff7f'],['D','#bfff7f'],['F','#7fff7f']];
+let S={lists:[],last:null,set:{key:'',size:80,theme:'dark'}},cur=null,editMode=false;
+try{S=Object.assign(S,JSON.parse(localStorage.getItem('tl')||'{}'))}catch(e){}
+const save=()=>{try{localStorage.setItem('tl',JSON.stringify(S))}catch(e){alert('Память заполнена')}};
+function show(n){document.querySelectorAll('.scr').forEach(e=>e.classList.toggle('on',e.id==n));window.scrollTo(0,0);({home,lists,set:settings,ed:editor})[n]()}
+function applySet(){document.body.classList.toggle('light',S.set.theme=='light');document.documentElement.style.setProperty('--t',S.set.size+'px')}
+const mini=l=>'<div class="mini">'+l.tiers.map(t=>`<div class="mr"><div class="ml" style="background:${t.color}"></div>${l.items.filter(i=>i.tier==t.id).slice(0,5).map(i=>`<div class="mi" style="background-image:url('${i.img}')"></div>`).join('')}</div>`).join('')+'</div>';
+function home(){const l=S.lists.find(x=>x.id==S.last);
+$('home').innerHTML='<h1>🎮 Тир-лист игр</h1>'+(l?`<button class="cont" onclick="open_('${l.id}')">${mini(l)}<div><small style="color:var(--mu)">Продолжить</small><br><b>${esc(l.name)}</b></div></button>`:'')+
+'<button class="big pr" onclick="create()">➕ Создать</button><button class="big" onclick="show(\'lists\')">📁 Мои тир-листы</button><button class="big" onclick="show(\'set\')">⚙️ Настройки</button>'}
+const esc=s=>String(s).replace(/[&<>"']/g,c=>'&#'+c.charCodeAt(0)+';');
+function create(){const n=prompt('Название тир-листа','Мой тир-лист');if(n===null)return;
+const l={id:uid(),name:n||'Без названия',tiers:COL.map(c=>({id:uid(),name:c[0],color:c[1]})),items:[],t:Date.now()};S.lists.unshift(l);open_(l.id)}
+function open_(id){cur=S.lists.find(x=>x.id==id);S.last=id;editMode=false;save();show('ed')}
+function lists(){$('lists').innerHTML=`<div class="bar"><button class="ib" onclick="show('home')">←</button><b>Мои тир-листы</b><button onclick="$('imp').click()">Импорт</button></div>`+
+(S.lists.map(l=>`<div class="li"><button class="cont" onclick="open_('${l.id}')">${mini(l)}<b>${esc(l.name)}</b></button><button class="ib" onclick="del('${l.id}')">🗑</button></div>`).join('')||'<p style="color:var(--mu)">Пока пусто</p>')}
+function del(id){if(!confirm('Удалить тир-лист?'))return;S.lists=S.lists.filter(l=>l.id!=id);if(S.last==id)S.last=null;save();lists()}
+$('imp').onchange=async e=>{try{const l=JSON.parse(await e.target.files[0].text());if(!l.tiers||!l.items)throw 0;l.id=uid();S.lists.unshift(l);save();lists()}catch(x){alert('Неверный файл')}e.target.value=''};
+function settings(){const s=S.set;$('set').innerHTML=`<div class="bar"><button class="ib" onclick="show('home')">←</button><b>Настройки</b></div>
+<label>Тема</label><button onclick="S.set.theme=S.set.theme=='dark'?'light':'dark';save();applySet();settings()">${s.theme=='dark'?'🌙 Тёмная':'☀️ Светлая'}</button>
+<label>Размер плиток: ${s.size}px</label><input type="range" min="56" max="120" value="${s.size}" oninput="S.set.size=+this.value;save();applySet();this.previousElementSibling.textContent='Размер плиток: '+this.value+'px'">
+<label>API-ключ RAWG (необязательно; без него поиск идёт через Steam и Wikipedia)</label><input value="${esc(s.key)}" onchange="S.set.key=this.value.trim();save()" placeholder="вставьте ключ">
+<label>Данные</label><button onclick="if(confirm('Удалить ВСЕ тир-листы?')){S.lists=[];S.last=null;save();alert('Готово')}">Удалить все тир-листы</button>`}
+function editor(){const l=cur;$('ed').innerHTML=`<div class="bar"><button class="ib" onclick="show('home')">🏠</button><b>${esc(l.name)}</b><button class="ib" onclick="cfg()">✏️</button><button class="ib" onclick="expo()">📤</button></div>`+
+l.tiers.map(t=>`<div class="row"><div class="lab" style="background:${t.color}">${esc(t.name)}</div><div class="cell" data-t="${t.id}">${l.items.filter(i=>i.tier==t.id).map(tile).join('')}</div></div>`).join('')+
+`<div class="tray" data-t="">${l.items.filter(i=>!i.tier).map(tile).join('')}</div><button class="big pr" style="margin-top:14px;text-align:center" onclick="srch()">🔍 Добавить игру</button>`}
+const tile=i=>`<div class="tile" data-i="${i.id}" style="background-image:url('${i.img||''}')"><span>${esc(i.name)}</span></div>`;
+// drag
+let g=null;
+$('ed').addEventListener('pointerdown',e=>{const t=e.target.closest('.tile');if(!t)return;e.preventDefault();
+const r=t.getBoundingClientRect();g={el:t,gh:t.cloneNode(true),dx:e.clientX-r.left,dy:e.clientY-r.top,mv:false,x:e.clientX,y:e.clientY};})
+addEventListener('pointermove',e=>{if(!g)return;if(!g.mv&&Math.hypot(e.clientX-g.x,e.clientY-g.y)<6)return;
+if(!g.mv){g.mv=true;g.gh.classList.add('ghost');document.body.appendChild(g.gh);g.el.style.opacity=.3}
+g.gh.style.left=e.clientX-g.dx+'px';g.gh.style.top=e.clientY-g.dy+'px'})
+addEventListener('pointerup',e=>{if(!g)return;const o=g;g=null;o.gh.remove();o.el.style.opacity=1;
+if(!o.mv){if(o.el.dataset.i&&confirm('Удалить «'+cur.items.find(i=>i.id==o.el.dataset.i).name+'»?')){cur.items=cur.items.filter(i=>i.id!=o.el.dataset.i);save();editor()}return}
+const c=document.elementFromPoint(e.clientX,e.clientY)?.closest('[data-t]');if(!c||!$('ed').contains(c))return;
+const it=cur.items.find(i=>i.id==o.el.dataset.i);cur.items=cur.items.filter(i=>i!=it);it.tier=c.dataset.t;
+const sib=[...c.querySelectorAll('.tile')].filter(x=>x!=o.el);let idx=sib.length;
+for(let k=0;k<sib.length;k++){const b=sib[k].getBoundingClientRect();if(e.clientY<b.top||(e.clientY<b.bottom&&e.clientX<b.left+b.width/2)){idx=k;break}}
+const ref=sib[idx]?cur.items.find(i=>i.id==sib[idx].dataset.i):null;
+cur.items.splice(ref?cur.items.indexOf(ref):cur.items.length,0,it);cur.t=Date.now();save();editor()});
+// edit tiers
+function cfg(){const l=cur;$('cfg').classList.add('on');$('cfg').innerHTML=`<div class="bar"><b>Редактирование</b><button class="pr" onclick="$('cfg').classList.remove('on');editor()">Готово</button></div>
+<label>Название тир-листа</label><input value="${esc(l.name)}" oninput="cur.name=this.value;save()"><label>Строки</label>`+
+l.tiers.map((t,k)=>`<div class="er"><input type="color" value="${t.color}" onchange="cur.tiers[${k}].color=this.value;save()"><input value="${esc(t.name)}" oninput="cur.tiers[${k}].name=this.value;save()"><button onclick="mv(${k},-1)">↑</button><button onclick="mv(${k},1)">↓</button><button onclick="rm(${k})">🗑</button></div>`).join('')+
+'<button class="big" onclick="addT()">➕ Добавить строку</button>'}
+function mv(k,d){const a=cur.tiers;if(!a[k+d])return;[a[k],a[k+d]]=[a[k+d],a[k]];save();cfg()}
+function rm(k){const t=cur.tiers[k];cur.items.forEach(i=>{if(i.tier==t.id)i.tier=''});cur.tiers.splice(k,1);save();cfg()}
+function addT(){cur.tiers.push({id:uid(),name:'Новая',color:'#cccccc'});save();cfg()}
+// search
+let tm;function srch(){$('srch').classList.add('on');$('srch').innerHTML=`<div class="bar"><input id="q" placeholder="Название игры" oninput="clearTimeout(tm);tm=setTimeout(find,450)"><button onclick="$('srch').classList.remove('on')">✕</button></div><div id="rs"></div>`;$('q').focus()}
+const enc=encodeURIComponent;
+async function rawg(q){const d=await(await fetch(`https://api.rawg.io/api/games?key=${S.set.key}&search=${enc(q)}&page_size=12`)).json();return d.results.map(g=>({name:g.name,img:g.background_image||''}))}
+async function steam(q){const d=await(await fetch(`https://store.steampowered.com/api/storesearch/?term=${enc(q)}&l=english&cc=us`)).json();return d.items.slice(0,12).map(i=>({name:i.name,img:`https://cdn.cloudflare.steamstatic.com/steam/apps/${i.id}/header.jpg`}))}
+async function wiki(q){const d=await(await fetch(`https://en.wikipedia.org/w/api.php?action=query&generator=search&gsrsearch=${enc(q+' video game')}&gsrlimit=12&prop=pageimages&piprop=thumbnail&pithumbsize=400&format=json&origin=*`)).json();
+return Object.values(d.query?.pages||{}).sort((x,y)=>x.index-y.index).map(p=>({name:p.title.replace(/ \(.*video game.*\)$/i,''),img:p.thumbnail?.source||''}))}
+async function find(){const q=$('q').value.trim(),r=$('rs');if(!q)return;r.textContent='Поиск…';let L=[];
+if(S.set.key)try{L=await rawg(q)}catch(e){}
+if(!L.length)try{L=await steam(q)}catch(e){}
+if(!L.length)try{L=await wiki(q)}catch(e){}
+window.R=L;r.innerHTML=L.length?L.map((g,k)=>`<div class="res" style="background-image:url('${g.img}')" onclick="pick(${k})"><span>${esc(g.name)}</span></div>`).join(''):'Ничего не найдено или нет интернета'}
+function small(u){return new Promise(res=>{if(!u)return res('');const im=new Image;im.crossOrigin='anonymous';im.onload=()=>{try{const c=document.createElement('canvas');c.width=c.height=160;const x=c.getContext('2d'),s=Math.min(im.width,im.height);x.drawImage(im,(im.width-s)/2,(im.height-s)/2,s,s,0,0,160,160);res(c.toDataURL('image/jpeg',.7))}catch(e){res(u)}};im.onerror=()=>res(u);im.src=u})}
+async function pick(k){const g=R[k];$('srch').classList.remove('on');cur.items.push({id:uid(),name:g.name,img:await small(g.img),tier:''});save();editor()}
+// export
+function expo(){$('exp').classList.add('on');$('exp').innerHTML=`<div class="bar"><b>Экспорт</b><button onclick="$('exp').classList.remove('on')">✕</button></div><button class="big pr" onclick="png()">🖼 Как картинка (PNG)</button><button class="big" onclick="fileEx()">📄 Как файл для импорта</button>`}
+async function out(blob,name){const C=window.Capacitor;
+if(C&&C.isNativePlatform&&C.isNativePlatform()){try{const b64=await new Promise(r=>{const f=new FileReader;f.onload=()=>r(f.result.split(',')[1]);f.readAsDataURL(blob)});
+const P=C.Plugins,w=await P.Filesystem.writeFile({path:name,data:b64,directory:'CACHE'});await P.Share.share({title:name,url:w.uri});return}catch(e){}}
+const f=new File([blob],name,{type:blob.type});if(navigator.canShare&&navigator.canShare({files:[f]}))navigator.share({files:[f]}).catch(()=>{});else{const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;a.click()}}
+function fileEx(){out(new Blob([JSON.stringify(cur)],{type:'application/json'}),cur.name+'.json')}
+async function png(noimg){const T=100,W=900,P=100,pr=Math.floor((W-P)/T);const rows=cur.tiers.map(t=>({t,it:cur.items.filter(i=>i.tier==t.id)}));
+const hs=rows.map(r=>Math.max(1,Math.ceil(r.it.length/pr))*T);const c=document.createElement('canvas');c.width=W;c.height=hs.reduce((a,b)=>a+b+3,0);const x=c.getContext('2d');
+x.fillStyle='#1a1a1a';x.fillRect(0,0,W,c.height);let y=0;
+for(let r=0;r<rows.length;r++){x.fillStyle=rows[r].t.color;x.fillRect(0,y,P,hs[r]);x.fillStyle='#000';x.font='bold 28px sans-serif';x.textAlign='center';x.textBaseline='middle';x.fillText(rows[r].t.name,P/2,y+hs[r]/2,P-10);
+for(let k=0;k<rows[r].it.length;k++){const i=rows[r].it[k],px=P+(k%pr)*T,py=y+Math.floor(k/pr)*T;x.fillStyle='#444';x.fillRect(px,py,T,T);
+if(!noimg&&i.img){await new Promise(res=>{const im=new Image;im.crossOrigin='anonymous';im.onload=()=>{x.drawImage(im,px,py,T,T);res()};im.onerror=res;im.src=i.img})}
+x.fillStyle='rgba(0,0,0,.4)';x.fillRect(px,py,T,T);x.fillStyle='#fff';x.font='bold 13px sans-serif';x.fillText(i.name.slice(0,22),px+T/2,py+T/2,T-8)}y+=hs[r]+3}
+c.toBlob(b=>{if(b)out(b,cur.name+'.png');else if(!noimg)png(true)},'image/png')}
+applySet();home();
+</script></body></html>

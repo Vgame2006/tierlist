@@ -1,0 +1,6 @@
+{
+  "appId": "com.example.tierlist",
+  "appName": "Тир-лист игр",
+  "webDir": "www",
+  "plugins": { "CapacitorHttp": { "enabled": true } }
+}
