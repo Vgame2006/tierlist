@@ -1,6 +1,6 @@
 {
-  "appId": "com.example.tierlist",
-  "appName": "Тир-лист игр",
+  "appId": "com.gametl.app",
+  "appName": "GameTL",
   "webDir": "www",
   "plugins": { "CapacitorHttp": { "enabled": true } }
 }

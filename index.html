@@ -1,10 +1,15 @@
 <!DOCTYPE html>
 <html lang="ru"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#14161c"><title>Тир-лист игр</title>
+<meta name="theme-color" content="#14161c"><title>GameTL</title>
 <style>
 :root{--bg:#14161c;--card:#232733;--tx:#f2f3f7;--mu:#8b90a0;--ac:#6c8cff;--t:80px}
-body.light{--bg:#f0f1f5;--card:#fff;--tx:#14161c;--mu:#667}
+#home.on{display:flex;align-items:center;justify-content:center}
+.hm{width:100%;max-width:340px;text-align:center}.hm .big{text-align:center}
+.sws{display:grid;grid-template-columns:1fr 1fr;gap:10px}.sw{display:flex;align-items:center;gap:10px;padding:14px;font-weight:600}.sw i{width:22px;height:22px;border-radius:50%;display:inline-block}
+.view{position:fixed;inset:0;z-index:80;background:rgba(0,0,0,.88);display:none;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:16px}.view.on{display:flex}
+.vc{width:min(92vw,520px);aspect-ratio:1;background:#444 center/cover;border-radius:18px;position:relative;overflow:hidden}
+.vc span{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;text-align:center;font-size:26px;font-weight:800;color:#fff;background:rgba(0,0,0,.35);text-shadow:0 2px 6px #000;padding:20px}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 body{margin:0;background:var(--bg);color:var(--tx);font:16px system-ui,sans-serif;padding-top:env(safe-area-inset-top)}
 .scr{display:none;padding:14px;max-width:700px;margin:auto;min-height:100vh}.scr.on{display:block}
@@ -33,7 +38,7 @@ input[type=text],input:not([type]){width:100%;padding:12px;border-radius:12px;bo
 label{display:block;margin:14px 0 6px;color:var(--mu)}
 </style></head><body>
 <div id="home" class="scr on"></div><div id="lists" class="scr"></div><div id="set" class="scr"></div><div id="ed" class="scr"></div>
-<div id="srch" class="sheet"></div><div id="cfg" class="sheet"></div><div id="exp" class="sheet"></div>
+<div id="srch" class="sheet"></div><div id="cfg" class="sheet"></div><div id="exp" class="sheet"></div><div id="view" class="view"></div>
 <input type="file" id="imp" accept=".json,.tier" hidden>
 <script>
 const $=id=>document.getElementById(id),uid=()=>Math.random().toString(36).slice(2,9);
@@ -41,22 +46,25 @@ const COL=[['S','#ff7f7f'],['A','#ffbf7f'],['B','#ffdf7f'],['C','#ffff7f'],['D',
 let S={lists:[],last:null,set:{key:'',size:80,theme:'dark'}},cur=null,editMode=false;
 try{S=Object.assign(S,JSON.parse(localStorage.getItem('tl')||'{}'))}catch(e){}
 const save=()=>{try{localStorage.setItem('tl',JSON.stringify(S))}catch(e){alert('Память заполнена')}};
-function show(n){document.querySelectorAll('.scr').forEach(e=>e.classList.toggle('on',e.id==n));window.scrollTo(0,0);({home,lists,set:settings,ed:editor})[n]()}
-function applySet(){document.body.classList.toggle('light',S.set.theme=='light');document.documentElement.style.setProperty('--t',S.set.size+'px')}
+let scr='home',prev='home';function show(n){scr=n;document.querySelectorAll('.scr').forEach(e=>e.classList.toggle('on',e.id==n));window.scrollTo(0,0);({home,lists,set:settings,ed:editor})[n]()}
+const TH={midnight:['#14161c','#232733','#f2f3f7','#8b90a0','#5b7cff','Ночь'],light:['#f0f1f5','#ffffff','#14161c','#667085','#4f6bff','Светлая'],violet:['#1a1230','#2a1d4a','#f4eeff','#a99bd0','#8e4dff','Фиолетовая'],forest:['#0f1a14','#1b2e22','#eaf6ee','#86a893','#1fa860','Лес'],crimson:['#1c0f12','#321a20','#fdeef0','#b58a92','#e63e5f','Малиновая'],ocean:['#0a1a24','#12303f','#e8f6fb','#7fa6b6','#1a9fc4','Океан'],sunset:['#1f140d','#36231a','#fff1e6','#bf9a82','#e8791a','Закат'],amoled:['#000000','#161616','#ffffff','#888888','#3d6bff','AMOLED']};
+if(!TH[S.set.theme])S.set.theme='midnight';
+function applySet(){const t=TH[S.set.theme],r=document.documentElement.style;['--bg','--card','--tx','--mu','--ac'].forEach((k,i)=>r.setProperty(k,t[i]));r.setProperty('--t',S.set.size+'px');const m=document.querySelector('meta[name=theme-color]');if(m)m.content=t[0]}
 const mini=l=>'<div class="mini">'+l.tiers.map(t=>`<div class="mr"><div class="ml" style="background:${t.color}"></div>${l.items.filter(i=>i.tier==t.id).slice(0,5).map(i=>`<div class="mi" style="background-image:url('${i.img}')"></div>`).join('')}</div>`).join('')+'</div>';
 function home(){const l=S.lists.find(x=>x.id==S.last);
-$('home').innerHTML='<h1>🎮 Тир-лист игр</h1>'+(l?`<button class="cont" onclick="open_('${l.id}')">${mini(l)}<div><small style="color:var(--mu)">Продолжить</small><br><b>${esc(l.name)}</b></div></button>`:'')+
-'<button class="big pr" onclick="create()">➕ Создать</button><button class="big" onclick="show(\'lists\')">📁 Мои тир-листы</button><button class="big" onclick="show(\'set\')">⚙️ Настройки</button>'}
+$('home').innerHTML='<div class="hm"><h1>🎮 GameTL</h1>'+(l?`<button class="cont" onclick="open_('${l.id}')">${mini(l)}<div><small style="color:var(--mu)">Продолжить</small><br><b>${esc(l.name)}</b></div></button>`:'')+
+'<button class="big pr" onclick="create()">➕ Создать</button><button class="big" onclick="show(\'lists\')">📁 Мои тир-листы</button><button class="big" onclick="show(\'set\')">⚙️ Настройки</button></div>'}
 const esc=s=>String(s).replace(/[&<>"']/g,c=>'&#'+c.charCodeAt(0)+';');
 function create(){const n=prompt('Название тир-листа','Мой тир-лист');if(n===null)return;
 const l={id:uid(),name:n||'Без названия',tiers:COL.map(c=>({id:uid(),name:c[0],color:c[1]})),items:[],t:Date.now()};S.lists.unshift(l);open_(l.id)}
-function open_(id){cur=S.lists.find(x=>x.id==id);S.last=id;editMode=false;save();show('ed')}
+function open_(id){prev=scr;cur=S.lists.find(x=>x.id==id);S.last=id;editMode=false;save();show('ed')}
 function lists(){$('lists').innerHTML=`<div class="bar"><button class="ib" onclick="show('home')">←</button><b>Мои тир-листы</b><button onclick="$('imp').click()">Импорт</button></div>`+
 (S.lists.map(l=>`<div class="li"><button class="cont" onclick="open_('${l.id}')">${mini(l)}<b>${esc(l.name)}</b></button><button class="ib" onclick="del('${l.id}')">🗑</button></div>`).join('')||'<p style="color:var(--mu)">Пока пусто</p>')}
 function del(id){if(!confirm('Удалить тир-лист?'))return;S.lists=S.lists.filter(l=>l.id!=id);if(S.last==id)S.last=null;save();lists()}
 $('imp').onchange=async e=>{try{const l=JSON.parse(await e.target.files[0].text());if(!l.tiers||!l.items)throw 0;l.id=uid();S.lists.unshift(l);save();lists()}catch(x){alert('Неверный файл')}e.target.value=''};
+function setTh(k){S.set.theme=k;save();applySet();settings()}
 function settings(){const s=S.set;$('set').innerHTML=`<div class="bar"><button class="ib" onclick="show('home')">←</button><b>Настройки</b></div>
-<label>Тема</label><button onclick="S.set.theme=S.set.theme=='dark'?'light':'dark';save();applySet();settings()">${s.theme=='dark'?'🌙 Тёмная':'☀️ Светлая'}</button>
+<label>Цветовая тема</label><div class="sws">${Object.entries(TH).map(([k,t])=>`<button class="sw" style="background:${t[0]};color:${t[2]};border:3px solid ${s.theme==k?t[4]:t[1]}" onclick="setTh('${k}')"><i style="background:${t[4]}"></i>${t[5]}</button>`).join('')}</div>
 <label>Размер плиток: ${s.size}px</label><input type="range" min="56" max="120" value="${s.size}" oninput="S.set.size=+this.value;save();applySet();this.previousElementSibling.textContent='Размер плиток: '+this.value+'px'">
 <label>API-ключ RAWG (необязательно; без него поиск идёт через Steam и Wikipedia)</label><input value="${esc(s.key)}" onchange="S.set.key=this.value.trim();save()" placeholder="вставьте ключ">
 <label>Данные</label><button onclick="if(confirm('Удалить ВСЕ тир-листы?')){S.lists=[];S.last=null;save();alert('Готово')}">Удалить все тир-листы</button>`}
@@ -67,12 +75,12 @@ const tile=i=>`<div class="tile" data-i="${i.id}" style="background-image:url('$
 // drag
 let g=null;
 $('ed').addEventListener('pointerdown',e=>{const t=e.target.closest('.tile');if(!t)return;e.preventDefault();
-const r=t.getBoundingClientRect();g={el:t,gh:t.cloneNode(true),dx:e.clientX-r.left,dy:e.clientY-r.top,mv:false,x:e.clientX,y:e.clientY};})
+const r=t.getBoundingClientRect();g={el:t,gh:t.cloneNode(true),dx:e.clientX-r.left,dy:e.clientY-r.top,mv:false,x:e.clientX,y:e.clientY};const gg=g;g.tm=setTimeout(()=>{if(g===gg&&!g.mv){const id=gg.el.dataset.i;g=null;delItem(id)}},600)})
 addEventListener('pointermove',e=>{if(!g)return;if(!g.mv&&Math.hypot(e.clientX-g.x,e.clientY-g.y)<6)return;
-if(!g.mv){g.mv=true;g.gh.classList.add('ghost');document.body.appendChild(g.gh);g.el.style.opacity=.3}
+if(!g.mv){g.mv=true;clearTimeout(g.tm);g.gh.classList.add('ghost');document.body.appendChild(g.gh);g.el.style.opacity=.3}
 g.gh.style.left=e.clientX-g.dx+'px';g.gh.style.top=e.clientY-g.dy+'px'})
 addEventListener('pointerup',e=>{if(!g)return;const o=g;g=null;o.gh.remove();o.el.style.opacity=1;
-if(!o.mv){if(o.el.dataset.i&&confirm('Удалить «'+cur.items.find(i=>i.id==o.el.dataset.i).name+'»?')){cur.items=cur.items.filter(i=>i.id!=o.el.dataset.i);save();editor()}return}
+clearTimeout(o.tm);if(!o.mv){openV(o.el.dataset.i);return}
 const c=document.elementFromPoint(e.clientX,e.clientY)?.closest('[data-t]');if(!c||!$('ed').contains(c))return;
 const it=cur.items.find(i=>i.id==o.el.dataset.i);cur.items=cur.items.filter(i=>i!=it);it.tier=c.dataset.t;
 const sib=[...c.querySelectorAll('.tile')].filter(x=>x!=o.el);let idx=sib.length;
@@ -99,7 +107,7 @@ if(S.set.key)try{L=await rawg(q)}catch(e){}
 if(!L.length)try{L=await steam(q)}catch(e){}
 if(!L.length)try{L=await wiki(q)}catch(e){}
 window.R=L;r.innerHTML=L.length?L.map((g,k)=>`<div class="res" style="background-image:url('${g.img}')" onclick="pick(${k})"><span>${esc(g.name)}</span></div>`).join(''):'Ничего не найдено или нет интернета'}
-function small(u){return new Promise(res=>{if(!u)return res('');const im=new Image;im.crossOrigin='anonymous';im.onload=()=>{try{const c=document.createElement('canvas');c.width=c.height=160;const x=c.getContext('2d'),s=Math.min(im.width,im.height);x.drawImage(im,(im.width-s)/2,(im.height-s)/2,s,s,0,0,160,160);res(c.toDataURL('image/jpeg',.7))}catch(e){res(u)}};im.onerror=()=>res(u);im.src=u})}
+function small(u){return new Promise(res=>{if(!u)return res('');const im=new Image;im.crossOrigin='anonymous';im.onload=()=>{try{const c=document.createElement('canvas');c.width=c.height=300;const x=c.getContext('2d'),s=Math.min(im.width,im.height);x.drawImage(im,(im.width-s)/2,(im.height-s)/2,s,s,0,0,300,300);res(c.toDataURL('image/jpeg',.75))}catch(e){res(u)}};im.onerror=()=>res(u);im.src=u})}
 async function pick(k){const g=R[k];$('srch').classList.remove('on');cur.items.push({id:uid(),name:g.name,img:await small(g.img),tier:''});save();editor()}
 // export
 function expo(){$('exp').classList.add('on');$('exp').innerHTML=`<div class="bar"><b>Экспорт</b><button onclick="$('exp').classList.remove('on')">✕</button></div><button class="big pr" onclick="png()">🖼 Как картинка (PNG)</button><button class="big" onclick="fileEx()">📄 Как файл для импорта</button>`}
@@ -116,5 +124,18 @@ for(let k=0;k<rows[r].it.length;k++){const i=rows[r].it[k],px=P+(k%pr)*T,py=y+Ma
 if(!noimg&&i.img){await new Promise(res=>{const im=new Image;im.crossOrigin='anonymous';im.onload=()=>{x.drawImage(im,px,py,T,T);res()};im.onerror=res;im.src=i.img})}
 x.fillStyle='rgba(0,0,0,.4)';x.fillRect(px,py,T,T);x.fillStyle='#fff';x.font='bold 13px sans-serif';x.fillText(i.name.slice(0,22),px+T/2,py+T/2,T-8)}y+=hs[r]+3}
 c.toBlob(b=>{if(b)out(b,cur.name+'.png');else if(!noimg)png(true)},'image/png')}
+function openV(id){const i=cur.items.find(x=>x.id==id);if(!i)return;const t=cur.tiers.find(x=>x.id==i.tier);
+$('view').innerHTML=`<div class="vc" style="background-image:url('${i.img}')"><span>${esc(i.name)}</span></div><div style="color:#fff">${t?'Ряд: '+esc(t.name):'Не в тир-листе'}</div><div class="er" style="width:min(92vw,520px)"><button style="flex:1" onclick="closeV()">Закрыть</button><button style="flex:1;background:#d33;color:#fff" onclick="delItem('${id}')">🗑 Удалить</button></div>`;$('view').classList.add('on')}
+function closeV(){$('view').classList.remove('on')}
+function delItem(id){const i=cur.items.find(x=>x.id==id);if(!i||!confirm('Удалить «'+i.name+'»?'))return;cur.items=cur.items.filter(x=>x!=i);save();closeV();editor()}
+$('view').onclick=e=>{if(e.target.id=='view')closeV()};
+addEventListener('contextmenu',e=>e.preventDefault());
+function back(){if($('view').classList.contains('on'))return closeV();
+if($('cfg').classList.contains('on')){$('cfg').classList.remove('on');return editor()}
+for(const id of['srch','exp'])if($(id).classList.contains('on')){$(id).classList.remove('on');return}
+if(scr=='ed')return show(prev=='lists'?'lists':'home');
+if(scr!='home')return show('home');
+try{window.Capacitor.Plugins.App.exitApp()}catch(e){}}
+try{window.Capacitor.Plugins.App.addListener('backButton',back)}catch(e){}
 applySet();home();
 </script></body></html>
