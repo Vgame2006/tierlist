@@ -1,9 +1,10 @@
 <!DOCTYPE html>
 <html lang="ru"><head><meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <meta name="theme-color" content="#14161c"><title>GameTL</title>
 <style>
 :root{--bg:#14161c;--card:#232733;--tx:#f2f3f7;--mu:#8b90a0;--ac:#6c8cff;--t:80px}
+#ed{touch-action:pan-y}
 #home.on{display:flex;align-items:center;justify-content:center}
 .hm{width:100%;max-width:340px;text-align:center}.hm .big{text-align:center}
 .sws{display:grid;grid-template-columns:1fr 1fr;gap:10px}.sw{display:flex;align-items:center;gap:10px;padding:14px;font-weight:600}.sw i{width:22px;height:22px;border-radius:50%;display:inline-block}
@@ -24,10 +25,13 @@ h1{margin:8px 0 16px}button{font:inherit;color:inherit;border:0;border-radius:12
 .lab{width:70px;flex:none;display:flex;align-items:center;justify-content:center;font-weight:800;text-align:center;color:#000;padding:2px;word-break:break-word;font-size:15px}
 .cell{flex:1;display:flex;flex-wrap:wrap;background:var(--card);align-content:flex-start;min-height:var(--t)}
 .tray{margin-top:18px;border:2px dashed var(--mu);border-radius:12px;display:flex;flex-wrap:wrap;min-height:calc(var(--t) + 8px);padding:4px;gap:0}
-.tile{width:var(--t);height:var(--t);background-size:cover;background-position:center;position:relative;touch-action:none;user-select:none;-webkit-user-select:none;background-color:#444;overflow:hidden}
+.tile{width:var(--t);height:var(--t);background-size:cover;background-position:center;position:relative;touch-action:pan-y;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;background-color:#444;overflow:hidden}
 .tile span{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;text-align:center;font-size:11px;font-weight:700;color:#fff;background:rgba(0,0,0,.35);text-shadow:0 1px 3px #000;padding:3px;line-height:1.1}
 .tile i{position:absolute;top:0;right:0;background:#e33;color:#fff;font-style:normal;width:22px;height:22px;text-align:center;z-index:2}
-.ghost{position:fixed;z-index:99;pointer-events:none;opacity:.85;transform:scale(1.1)}
+.ghost{position:fixed;z-index:99;pointer-events:none;opacity:.9;animation:wobl .22s ease-in-out infinite alternate;box-shadow:0 8px 20px rgba(0,0,0,.5)}
+@keyframes wobl{from{transform:scale(1.12) rotate(-4deg)}to{transform:scale(1.12) rotate(4deg)}}
+@keyframes wob{0%,100%{transform:rotate(0)}20%{transform:rotate(-6deg)}40%{transform:rotate(5deg)}60%{transform:rotate(-3deg)}80%{transform:rotate(2deg)}}
+.wob{animation:wob .6s ease-in-out;z-index:3}.arm{animation:wobl .22s ease-in-out infinite alternate;z-index:3}
 .sheet{position:fixed;inset:0;background:var(--bg);z-index:50;display:none;padding:14px;overflow:auto}.sheet.on{display:block}
 input[type=text],input:not([type]){width:100%;padding:12px;border-radius:12px;border:1px solid var(--mu);background:var(--card);color:var(--tx);font:inherit}
 .res{height:90px;margin:8px 0;border-radius:12px;background-size:cover;background-position:center;display:flex;align-items:flex-end;font-weight:700;color:#fff;cursor:pointer}
@@ -65,36 +69,52 @@ $('imp').onchange=async e=>{try{const l=JSON.parse(await e.target.files[0].text(
 function setTh(k){S.set.theme=k;save();applySet();settings()}
 function settings(){const s=S.set;$('set').innerHTML=`<div class="bar"><button class="ib" onclick="show('home')">←</button><b>Настройки</b></div>
 <label>Цветовая тема</label><div class="sws">${Object.entries(TH).map(([k,t])=>`<button class="sw" style="background:${t[0]};color:${t[2]};border:3px solid ${s.theme==k?t[4]:t[1]}" onclick="setTh('${k}')"><i style="background:${t[4]}"></i>${t[5]}</button>`).join('')}</div>
-<label>Размер плиток: ${s.size}px</label><input type="range" min="56" max="120" value="${s.size}" oninput="S.set.size=+this.value;save();applySet();this.previousElementSibling.textContent='Размер плиток: '+this.value+'px'">
+<label>Размер плиток: ${s.size}px</label><input type="range" min="40" max="160" value="${s.size}" oninput="S.set.size=+this.value;save();applySet();this.previousElementSibling.textContent='Размер плиток: '+this.value+'px'">
 <label>API-ключ RAWG (необязательно; без него поиск идёт через Steam и Wikipedia)</label><input value="${esc(s.key)}" onchange="S.set.key=this.value.trim();save()" placeholder="вставьте ключ">
 <label>Версия: ${BUILD||'dev'}</label><button onclick="upd()">Проверить обновление</button><label>Данные</label><button onclick="if(confirm('Удалить ВСЕ тир-листы?')){S.lists=[];S.last=null;save();alert('Готово')}">Удалить все тир-листы</button>`}
-function editor(){const l=cur;$('ed').innerHTML=`<div class="bar"><button class="ib" onclick="show('home')">🏠</button><b>${esc(l.name)}</b><button class="ib" onclick="cfg()">✏️</button><button class="ib" onclick="expo()">📤</button></div>`+
+function editor(){const l=cur;$('ed').innerHTML=`<div class="bar"><button class="ib" onclick="show('home')">🏠</button><b>${esc(l.name)}</b><button class="ib" style="opacity:${(U[l.id]||[]).length?1:.35}" onclick="undo()">↩️</button><button class="ib" onclick="cfg()">✏️</button><button class="ib" onclick="expo()">📤</button></div>`+
 l.tiers.map(t=>`<div class="row"><div class="lab" style="background:${t.color}">${esc(t.name)}</div><div class="cell" data-t="${t.id}">${l.items.filter(i=>i.tier==t.id).map(tile).join('')}</div></div>`).join('')+
-`<div class="tray" data-t="">${l.items.filter(i=>!i.tier).map(tile).join('')}</div><button class="big pr" style="margin-top:14px;text-align:center" onclick="srch()">🔍 Добавить игру</button>`;setTimeout(ensureImgs,50)}
+`<div class="tray" data-t="">${l.items.filter(i=>!i.tier).map(tile).join('')}</div><button class="big pr" style="margin-top:14px;text-align:center" onclick="srch()">🔍 Добавить игру</button>`;if(lastDrop){const id=lastDrop;lastDrop=null;const t=$('ed').querySelector('[data-i="'+id+'"]');if(t){t.classList.add('wob');setTimeout(()=>t.classList.remove('wob'),700)}}setTimeout(ensureImgs,50)}
 const tile=i=>`<div class="tile" data-i="${i.id}" style="background-image:url('${i.img||''}')"><span>${esc(i.name)}</span></div>`;
-// drag
-let g=null;
-$('ed').addEventListener('pointerdown',e=>{const t=e.target.closest('.tile');if(!t)return;e.preventDefault();
-const r=t.getBoundingClientRect();g={el:t,gh:t.cloneNode(true),dx:e.clientX-r.left,dy:e.clientY-r.top,mv:false,x:e.clientX,y:e.clientY};const gg=g;g.tm=setTimeout(()=>{if(g===gg&&!g.mv){const id=gg.el.dataset.i;g=null;delItem(id)}},600)})
-addEventListener('pointermove',e=>{if(!g)return;if(!g.mv&&Math.hypot(e.clientX-g.x,e.clientY-g.y)<6)return;
-if(!g.mv){g.mv=true;clearTimeout(g.tm);g.gh.classList.add('ghost');document.body.appendChild(g.gh);g.el.style.opacity=.3}
-g.gh.style.left=e.clientX-g.dx+'px';g.gh.style.top=e.clientY-g.dy+'px'})
-addEventListener('pointerup',e=>{if(!g)return;const o=g;g=null;o.gh.remove();o.el.style.opacity=1;
-clearTimeout(o.tm);if(!o.mv){openV(o.el.dataset.i);return}
+// drag: удерживать ~0.3с -> перетаскивание, быстрый свайп -> прокрутка
+let g=null,lastDrop=null;
+function clr(){if(g){clearTimeout(g.t1);clearTimeout(g.t2);g.el.classList.remove('arm');if(g.gh)g.gh.remove();g.el.style.opacity=1;g=null}}
+$('ed').addEventListener('pointerdown',e=>{const t=e.target.closest('.tile');if(!e.isPrimary){clr();return}if(!t)return;if(g)clr();
+const r=t.getBoundingClientRect(),o={el:t,dx:e.clientX-r.left,dy:e.clientY-r.top,x:e.clientX,y:e.clientY,armed:false,mv:false,id:e.pointerId};g=o;
+o.t1=setTimeout(()=>{if(g!==o)return;o.armed=true;t.classList.add('arm');try{navigator.vibrate(12)}catch(x){}},e.pointerType=='mouse'?0:300);
+o.t2=setTimeout(()=>{if(g===o&&!o.mv){const id=t.dataset.i;clr();delItem(id)}},900)});
+$('ed').addEventListener('touchmove',e=>{if(g&&g.armed&&e.cancelable)e.preventDefault()},{passive:false});
+addEventListener('pointermove',e=>{if(!g||e.pointerId!=g.id)return;const d=Math.hypot(e.clientX-g.x,e.clientY-g.y);
+if(!g.armed){if(d>10)clr();return}
+if(!g.mv){if(d<6)return;g.mv=true;clearTimeout(g.t2);g.el.classList.remove('arm');g.gh=g.el.cloneNode(true);g.gh.classList.add('ghost');document.body.appendChild(g.gh);g.el.style.opacity=.3}
+g.gh.style.left=e.clientX-g.dx+'px';g.gh.style.top=e.clientY-g.dy+'px'});
+addEventListener('pointercancel',e=>{if(g&&e.pointerId==g.id)clr()});
+addEventListener('pointerup',e=>{if(!g||e.pointerId!=g.id)return;const o=g;clearTimeout(o.t1);clearTimeout(o.t2);o.el.classList.remove('arm');if(o.gh)o.gh.remove();o.el.style.opacity=1;g=null;
+if(!o.mv){openV(o.el.dataset.i);return}
 const c=document.elementFromPoint(e.clientX,e.clientY)?.closest('[data-t]');if(!c||!$('ed').contains(c))return;
-const it=cur.items.find(i=>i.id==o.el.dataset.i);cur.items=cur.items.filter(i=>i!=it);it.tier=c.dataset.t;
+snap();const it=cur.items.find(i=>i.id==o.el.dataset.i);cur.items=cur.items.filter(i=>i!=it);it.tier=c.dataset.t;
 const sib=[...c.querySelectorAll('.tile')].filter(x=>x!=o.el);let idx=sib.length;
 for(let k=0;k<sib.length;k++){const b=sib[k].getBoundingClientRect();if(e.clientY<b.top||(e.clientY<b.bottom&&e.clientX<b.left+b.width/2)){idx=k;break}}
 const ref=sib[idx]?cur.items.find(i=>i.id==sib[idx].dataset.i):null;
-cur.items.splice(ref?cur.items.indexOf(ref):cur.items.length,0,it);cur.t=Date.now();save();editor()});
+cur.items.splice(ref?cur.items.indexOf(ref):cur.items.length,0,it);lastDrop=it.id;cur.t=Date.now();save();editor()});
+// pinch: масштаб таблицы двумя пальцами
+let pz=null;const dist=e=>Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY);
+$('ed').addEventListener('touchstart',e=>{if(e.touches.length==2){clr();pz={d:dist(e),s:S.set.size}}},{passive:true});
+$('ed').addEventListener('touchmove',e=>{if(pz&&e.touches.length==2){if(e.cancelable)e.preventDefault();S.set.size=Math.round(Math.max(40,Math.min(160,pz.s*dist(e)/pz.d)));applySet()}},{passive:false});
+$('ed').addEventListener('touchend',e=>{if(pz&&e.touches.length<2){pz=null;save()}});
+// undo
+const U={};let lastSnap=0;
+function snap(){if(!cur)return;const u=U[cur.id]=U[cur.id]||[];u.push({name:cur.name,tiers:cur.tiers.map(t=>({...t})),items:cur.items.map(i=>({...i}))});if(u.length>40)u.shift();lastSnap=Date.now()}
+function snapD(){const n=Date.now();if(n-lastSnap>1500)snap();lastSnap=n}
+function undo(){const u=U[cur.id];if(!u||!u.length)return;const p=u.pop();cur.name=p.name;cur.tiers=p.tiers;cur.items=p.items;save();editor()}
 // edit tiers
-function cfg(){const l=cur;$('cfg').classList.add('on');$('cfg').innerHTML=`<div class="bar"><b>Редактирование</b><button class="pr" onclick="$('cfg').classList.remove('on');editor()">Готово</button></div>
-<label>Название тир-листа</label><input value="${esc(l.name)}" oninput="cur.name=this.value;save()"><label>Строки</label>`+
-l.tiers.map((t,k)=>`<div class="er"><input type="color" value="${t.color}" onchange="cur.tiers[${k}].color=this.value;save()"><input value="${esc(t.name)}" oninput="cur.tiers[${k}].name=this.value;save()"><button onclick="mv(${k},-1)">↑</button><button onclick="mv(${k},1)">↓</button><button onclick="rm(${k})">🗑</button></div>`).join('')+
+function cfg(){const l=cur;$('cfg').classList.add('on');$('cfg').innerHTML=`<div class="bar"><b>Редактирование</b><button class="ib" onclick="undo();cfg()">↩️</button><button class="pr" onclick="$('cfg').classList.remove('on');editor()">Готово</button></div>
+<label>Название тир-листа</label><input value="${esc(l.name)}" oninput="snapD();cur.name=this.value;save()"><label>Строки</label>`+
+l.tiers.map((t,k)=>`<div class="er"><input type="color" value="${t.color}" onchange="snapD();cur.tiers[${k}].color=this.value;save()"><input value="${esc(t.name)}" oninput="snapD();cur.tiers[${k}].name=this.value;save()"><button onclick="mv(${k},-1)">↑</button><button onclick="mv(${k},1)">↓</button><button onclick="rm(${k})">🗑</button></div>`).join('')+
 '<button class="big" onclick="addT()">➕ Добавить строку</button>'}
-function mv(k,d){const a=cur.tiers;if(!a[k+d])return;[a[k],a[k+d]]=[a[k+d],a[k]];save();cfg()}
-function rm(k){const t=cur.tiers[k];cur.items.forEach(i=>{if(i.tier==t.id)i.tier=''});cur.tiers.splice(k,1);save();cfg()}
-function addT(){cur.tiers.push({id:uid(),name:'Новая',color:'#cccccc'});save();cfg()}
+function mv(k,d){const a=cur.tiers;if(!a[k+d])return;snap();[a[k],a[k+d]]=[a[k+d],a[k]];save();cfg()}
+function rm(k){snap();const t=cur.tiers[k];cur.items.forEach(i=>{if(i.tier==t.id)i.tier=''});cur.tiers.splice(k,1);save();cfg()}
+function addT(){snap();cur.tiers.push({id:uid(),name:'Новая',color:'#cccccc'});save();cfg()}
 // search
 let tm;function srch(){$('srch').classList.add('on');$('srch').innerHTML=`<div class="bar"><input id="q" placeholder="Название игры" oninput="clearTimeout(tm);tm=setTimeout(find,450)"><button onclick="$('srch').classList.remove('on')">✕</button></div><button class="big" style="text-align:center" onclick="edit(null,$('q').value.trim())">➕ Своя игра (своё фото)</button><div id="rs"></div>`;$('q').focus()}
 const enc=encodeURIComponent;
@@ -111,7 +131,7 @@ if(!L.length)try{L=await wiki(q)}catch(e){}
 window.R=L;r.innerHTML=L.length?L.map((g,k)=>`<div class="res" style="background-image:url('${g.img}')" onclick="pick(${k})"><span>${esc(g.name)}</span></div>`).join(''):'Ничего не найдено или нет интернета'}
 function small(u){return new Promise(res=>{if(!u)return res('');const im=new Image;im.crossOrigin='anonymous';im.onload=()=>{try{const c=document.createElement('canvas');c.width=c.height=300;const x=c.getContext('2d'),s=Math.min(im.width,im.height);x.drawImage(im,(im.width-s)/2,(im.height-s)/2,s,s,0,0,300,300);res(c.toDataURL('image/jpeg',.75))}catch(e){res(u)}};im.onerror=()=>res(u);im.src=u})}
 async function pick(k){const g=R[k];$('srch').classList.remove('on');let im=g.img;if(!im)try{im=(await imgSearch(g.name))[0]?.img||''}catch(e){}
-cur.items.push({id:uid(),name:g.name,img:await small(im),tier:''});save();editor()}
+snap();cur.items.push({id:uid(),name:g.name,img:await small(im),tier:''});save();editor()}
 // export
 function expo(){$('exp').classList.add('on');$('exp').innerHTML=`<div class="bar"><b>Экспорт</b><button onclick="$('exp').classList.remove('on')">✕</button></div><button class="big pr" onclick="png()">🖼 Как картинка (PNG)</button><button class="big" onclick="fileEx()">📄 Как файл для импорта</button>`}
 async function out(blob,name){const C=window.Capacitor;
@@ -146,13 +166,13 @@ $('pf').onchange=e=>{const f=e.target.files[0];e.target.value='';if(!f)return;co
 let it;function imgSheet(){$('isr').classList.add('on');$('isr').innerHTML=`<div class="bar"><input id="iq" value="${esc(E.name)}" oninput="clearTimeout(it);it=setTimeout(imgFind,450)"><button onclick="$('isr').classList.remove('on')">✕</button></div><div id="ir" class="ig"></div>`;imgFind()}
 async function imgFind(){const q=$('iq').value.trim(),r=$('ir');if(!q)return;r.textContent='Поиск…';let L=[];try{L=await imgSearch(q)}catch(e){}window.IR=L;r.innerHTML=L.length?L.map((x,k)=>`<div style="background-image:url('${x.img}')" onclick="pickImg(${k})"></div>`).join(''):'Ничего не найдено'}
 async function pickImg(k){E.img=await small(IR[k].img);$('isr').classList.remove('on');drawE()}
-function saveE(){const n=E.name.trim();if(!n)return alert('Введите название');
+function saveE(){const n=E.name.trim();if(!n)return alert('Введите название');snap();
 if(E.id){const i=cur.items.find(x=>x.id==E.id);i.name=n;i.img=E.img;i.tried=1}else cur.items.push({id:uid(),name:n,img:E.img,tier:''});
 save();['edt','srch'].forEach(x=>$(x).classList.remove('on'));closeV();editor()}
 function openV(id){const i=cur.items.find(x=>x.id==id);if(!i)return;const t=cur.tiers.find(x=>x.id==i.tier);
 $('view').innerHTML=`<div class="vc" style="background-image:url('${i.img}')"><span>${esc(i.name)}</span></div><div style="color:#fff">${t?'Ряд: '+esc(t.name):'Не в тир-листе'}</div><div class="er" style="width:min(92vw,520px)"><button style="flex:1" onclick="closeV()">Закрыть</button><button style="flex:1" onclick="closeV();edit('${id}')">✏️ Изменить</button><button style="flex:1;background:#d33;color:#fff" onclick="delItem('${id}')">🗑</button></div>`;$('view').style.pointerEvents='none';setTimeout(()=>$('view').style.pointerEvents='',450);$('view').classList.add('on')}
 function closeV(){$('view').classList.remove('on')}
-function delItem(id){const i=cur.items.find(x=>x.id==id);if(!i||!confirm('Удалить «'+i.name+'»?'))return;cur.items=cur.items.filter(x=>x!=i);save();closeV();editor()}
+function delItem(id){const i=cur.items.find(x=>x.id==id);if(!i||!confirm('Удалить «'+i.name+'»?'))return;snap();cur.items=cur.items.filter(x=>x!=i);save();closeV();editor()}
 $('view').onclick=e=>{if(e.target.id=='view')closeV()};
 addEventListener('contextmenu',e=>e.preventDefault());
 function back(){if($('view').classList.contains('on'))return closeV();
